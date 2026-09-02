@@ -1,0 +1,146 @@
+<?php 
+
+/**
+ * Fix for hourly file overwriting stock levels. 
+ */
+
+require_once('/home/bitnami/cron/vendor/autoload.php'); 
+require_once('/home/bitnami/cron/ftp_handler.php'); 
+
+use PhpOffice\PhpSpreadsheet;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+use Sync\FTP\Ftp_Handler;
+
+// workaround for timezones such as BST. 
+date_default_timezone_set("CET");
+
+$delimiter = ',';
+$encloser = '"';
+
+// files in use. 
+$filenames = array();
+$fields = array();
+
+/*
+$filenames[] = 'SITC-GBM.xlsx';
+
+$fields = array();
+$fields[] = 'brand';
+$fields[] = 'sku';
+$fields[] = 'description';
+$fields[] = 'stock';
+$fields[] = 'price';
+
+$fieldsets['SITC-GBM.xlsx'] = array_flip($fields);
+//*/
+
+$filenames[] = 'SITC-Sync.xlsx';
+
+$fields = array();
+$fields[] = 'part number';
+$fields[] = 'description';
+$fields[] = 'price';
+$fields[] = 'stock';
+$fields[] = 'brand';
+
+$fieldsets['SITC-Sync.xlsx'] = array_flip($fields);
+
+// define what skus need updating to new stock values. 
+$replacements = array();
+
+$replacements['mpq03b/a'] = '500';
+//$replacements['mpq03b/a'] = 'hello mum';
+
+$tempPath = sys_get_temp_dir();
+if ( substr($tempPath, -1) != DIRECTORY_SEPARATOR ) {
+    $tempPath .= DIRECTORY_SEPARATOR; 
+}
+
+foreach ( $filenames as $filename ) {
+
+    //$localFilePath = $tempPath . $filename;
+    //$localFilename = $tempPath . $filename . date('His') . '.xlsx';
+    $localFilename = $tempPath . $filename;
+
+    ///*
+    print PHP_EOL;
+    print 'input : ' . $filename . PHP_EOL;
+    print 'output : ' . $localFilename . PHP_EOL;
+    print PHP_EOL;
+    //*/
+
+    $ftpHandler = new Ftp_Handler();
+
+    if ( $ftpHandler->connect() ) {
+
+        if ( $ftpHandler->checkRemoteFile($filename, $localFilename) ) {
+
+            if ( $ftpHandler->getFile($filename, $localFilename) ) {
+
+                $reader = IOFactory::createReader('Xlsx');
+
+                $spreadsheet = $reader->load($localFilename);
+                
+                //$spreadsheet = new \PhpOffice\PhpSpreadsheet\IOFactory::load($localFilename);
+
+                $activeSheet = $spreadsheet->getActiveSheet();
+                //$data = $activeSheet('', false, false); 
+
+                $rowNumber = 1;
+                $sku = '';
+                do {
+
+                    $sku = trim($activeSheet->getCell('A' . $rowNumber));
+
+                    // lower to avoid problems in future. 
+                    $sku = strtolower($sku); 
+
+                    foreach ( $replacements as $key => $value ) {
+                        if ( $sku == strtolower($key) ) {
+                            $activeSheet->setCellValue('D' . $rowNumber, $value);
+                        }
+                    }
+
+                    $rowNumber++; 
+
+                    // failsafe
+                    if ( $rowNumber > 5000000 ) {
+                        $sku = '';
+                    }
+
+                } while ( !empty($sku) );
+
+                // write out the new file. 
+                $writer = IOFactory::createWriter($spreadsheet, "Xlsx");
+                $writer->save($localFilename);
+                //$writer->close();
+
+                //$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+                //$writer->save($localFilename);
+                //$writer->close();
+
+                print "Saved to : " . $localFilename . PHP_EOL;
+
+                // clean up. 
+                unset($worksheet); 
+                unset($spreadsheet); 
+                unset($reader); 
+                unset($writer); 
+
+                // get it back. 
+                if ( $ftpHandler->putFile($localFilename, $filename) ) {
+                    print "Success"; 
+                }
+
+            }
+
+        }
+
+    }
+
+}
+
+exit; 
