@@ -4,8 +4,8 @@
  * Fix for hourly file overwriting stock levels. 
  */
 
-require_once('/home/bitnami/cron/vendor/autoload.php'); 
-require_once('/home/bitnami/cron/ftp_handler.php'); 
+require_once(getcwd() . '/vendor/autoload.php'); 
+require_once(getcwd() . '/ftp_handler.php'); 
 
 use PhpOffice\PhpSpreadsheet;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -17,27 +17,32 @@ use Sync\FTP\Ftp_Handler;
 // workaround for timezones such as BST. 
 date_default_timezone_set("CET");
 
+$connections = array();
+
+$connections[] = array(
+    'details' => array(
+        'server' => 'ftp.stockinthechannel.co.uk',
+        'username' => 'DistriAccount40805',
+        'password' => 'tDmBg2017',
+    ),
+    'filename' => 'SITC-Sync.xlsx',
+    'replacements' => array('119140' => '500')
+);
+
+$connections[] = array(
+    'details' => array(
+        'server' => 'ftp.stockinthechannel.co.uk',
+        'username' => 'DistriAccount60741',
+        'password' => 'Q1jfReO3?T9T',
+    ),
+    'filename' => 'SITC-SyncCC.xlsx',
+    'replacements' => array('119140' => '500')
+);
+
 $delimiter = ',';
 $encloser = '"';
 
-// files in use. 
-$filenames = array();
 $fields = array();
-
-/*
-$filenames[] = 'SITC-GBM.xlsx';
-
-$fields = array();
-$fields[] = 'brand';
-$fields[] = 'sku';
-$fields[] = 'description';
-$fields[] = 'stock';
-$fields[] = 'price';
-
-$fieldsets['SITC-GBM.xlsx'] = array_flip($fields);
-//*/
-
-$filenames[] = 'SITC-Sync.xlsx';
 
 $fields = array();
 $fields[] = 'part number';
@@ -46,24 +51,21 @@ $fields[] = 'price';
 $fields[] = 'stock';
 $fields[] = 'brand';
 
-$fieldsets['SITC-Sync.xlsx'] = array_flip($fields);
-
-// define what skus need updating to new stock values. 
-$replacements = array();
-
-$replacements['mpq03b/a'] = '500';
-//$replacements['mpq03b/a'] = 'hello mum';
-
 $tempPath = sys_get_temp_dir();
 if ( substr($tempPath, -1) != DIRECTORY_SEPARATOR ) {
     $tempPath .= DIRECTORY_SEPARATOR; 
 }
 
-foreach ( $filenames as $filename ) {
+foreach ( $connections as $connection ) {
+
+    $filename = $connection['filename'];
+
+    $replacements = $connection['replacements'];
 
     //$localFilePath = $tempPath . $filename;
     //$localFilename = $tempPath . $filename . date('His') . '.xlsx';
-    $localFilename = $tempPath . $filename;
+    $localFilename = getcwd() . '/' . $filename . date('His') . '.xlsx';
+    //$localFilename = $tempPath . $filename;
 
     ///*
     print PHP_EOL;
@@ -74,7 +76,7 @@ foreach ( $filenames as $filename ) {
 
     $ftpHandler = new Ftp_Handler();
 
-    if ( $ftpHandler->connect() ) {
+    if ( $ftpHandler->connect($connection['details']) ) {
 
         if ( $ftpHandler->checkRemoteFile($filename, $localFilename) ) {
 
@@ -132,7 +134,7 @@ foreach ( $filenames as $filename ) {
 
                 // get it back. 
                 if ( $ftpHandler->putFile($localFilename, $filename) ) {
-                    print "Success"; 
+                    print "Success" . PHP_EOL; 
                 }
 
             }

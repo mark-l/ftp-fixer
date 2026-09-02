@@ -2,33 +2,26 @@
 
 namespace Sync\FTP;
 
-// ftp details.
-// plain text yes I know.. I am sorry. Please don't hate me.  
-define('FTP_SERVER', 'ftp.stockinthechannel.co.uk');
-define('FTP_USERNAME', 'DistriAccount40805');
-define('FTP_PASSWORD', 'tDmBg2017');
-//define('FTP_MODE', FTP_ASCII);
 define('FTP_MODE', FTP_BINARY);
-define('FTP_PATH', '/');
 
 class Ftp_Handler {
 
     private $_ftp;
 
-    function connect() : bool {
+    function connect($details) : bool {
 
         $returnValue = false;
 
         // set up basic connection
-        $ftp = ftp_connect(FTP_SERVER); 
+        $ftp = ftp_connect($details['server']); 
 
         // login with username and password
-        $loginResult = ftp_login($ftp, FTP_USERNAME, FTP_PASSWORD); 
+        $loginResult = ftp_login($ftp, $details['username'], $details['password']); 
 
         // check connection
         if ((!$ftp) || (!$loginResult)) { 
             echo "FTP connection has failed!";
-            echo "Attempted to connect to " . FTP_SERVER . " for user " . FTP_USERNAME; 
+            echo "Attempted to connect to " . $details['server'] . " for user " . $details['username']; 
             exit; 
         } else {
             // set passive mode. 
