@@ -63,8 +63,8 @@ foreach ( $connections as $connection ) {
     $replacements = $connection['replacements'];
 
     //$localFilePath = $tempPath . $filename;
-    //$localFilename = $tempPath . $filename . date('His') . '.xlsx';
-    $localFilename = getcwd() . '/' . $filename . date('His') . '.xlsx';
+    $localFilename = $tempPath . $filename . date('His') . '.xlsx';
+    //$localFilename = getcwd() . '/' . $filename . date('His') . '.xlsx';
     //$localFilename = $tempPath . $filename;
 
     ///*
